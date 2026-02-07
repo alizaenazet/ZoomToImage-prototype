@@ -10,11 +10,30 @@ import SwiftUI
 struct ContentView: View {
     @State private var isMagnifierEnabled = false
     
+    // Example hotspots - adjust these normalized coordinates to match your image
+    private let hotspots: [ImageHotspot] = [
+        ImageHotspot(
+            id: "part1",
+            normalizedX: 0.3,   // 30% from left
+            normalizedY: 0.7,   // 70% from bottom
+            normalizedRadius: 0.06  // 6% of image width
+        ),
+        ImageHotspot(
+            id: "part2",
+            normalizedX: 0.7,   // 70% from left
+            normalizedY: 0.4,   // 40% from bottom
+            normalizedRadius: 0.08  // 8% of image width
+        )
+    ]
+    
     var body: some View {
         VStack(spacing: 0) {
             // SpriteKit view for image display (9:16 ratio area)
-            SpriteKitView(isMagnifierEnabled: $isMagnifierEnabled)
-                .ignoresSafeArea()
+            SpriteKitView(
+                isMagnifierEnabled: $isMagnifierEnabled,
+                hotspots: hotspots
+            )
+            .ignoresSafeArea()
             
             // Bottom menu bar
             MenuBar(isMagnifierEnabled: $isMagnifierEnabled)
@@ -42,7 +61,6 @@ struct MenuBar: View {
                 .foregroundStyle(isMagnifierEnabled ? .blue : .white)
             }
             
-            // Placeholder for additional menu items
             Spacer()
         }
         .padding(.horizontal, 32)

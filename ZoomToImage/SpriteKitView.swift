@@ -10,6 +10,7 @@ import SpriteKit
 
 struct SpriteKitView: UIViewRepresentable {
     @Binding var isMagnifierEnabled: Bool
+    let hotspots: [ImageHotspot]
     
     func makeUIView(context: Context) -> SKView {
         let skView = SKView()
@@ -18,10 +19,11 @@ struct SpriteKitView: UIViewRepresentable {
         skView.showsNodeCount = false
         skView.backgroundColor = .black
         
-        // Create scene with a default size - it will resize automatically
+        // Create scene with hotspots
         let scene = GameScene()
         scene.scaleMode = .resizeFill
         scene.backgroundColor = .black
+        scene.hotspots = hotspots
         skView.presentScene(scene)
         
         return skView

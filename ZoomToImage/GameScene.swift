@@ -27,6 +27,17 @@ class GameScene: SKScene {
     private let magnifierRadius: CGFloat = 100
     private let zoomFactor: CGFloat = 3.0
     
+    // MARK: - Hotspots
+    
+    /// Configurable hotspots - define clickable regions using normalized coordinates
+    var hotspots: [ImageHotspot] = []
+    
+    /// Track which hotspots have been activated (marked)
+    private var activatedHotspotIds: Set<String> = []
+    
+    /// Dictionary to store marker nodes by hotspot ID
+    private var hotspotMarkers: [String: SKNode] = [:]
+    
     // MARK: - Scene Lifecycle
     
     override func didMove(to view: SKView) {
@@ -39,6 +50,8 @@ class GameScene: SKScene {
         // Reconfigure image when scene size changes
         if size.width > 0 && size.height > 0 {
             setupImage()
+            // Redraw any existing markers at new positions
+            redrawHotspotMarkers()
         }
     }
     
@@ -86,9 +99,15 @@ class GameScene: SKScene {
     // MARK: - Touch Handling
     
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard isMagnifierEnabled, let touch = touches.first else { return }
+        guard let touch = touches.first else { return }
         let location = touch.location(in: self)
-        updateMagnifier(at: location)
+        
+        if isMagnifierEnabled {
+            updateMagnifier(at: location)
+        } else {
+            // Check for hotspot taps when magnifier is disabled
+            checkHotspotTap(at: location)
+        }
     }
     
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
@@ -105,6 +124,86 @@ class GameScene: SKScene {
     override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
         magnifierNode?.removeFromParent()
         magnifierNode = nil
+    }
+    
+    // MARK: - Hotspot Detection
+    
+    private func checkHotspotTap(at position: CGPoint) {
+        guard let imageNode = imageNode else { return }
+        
+        // Check if touch is within the image bounds
+        guard imageNode.contains(position) else { return }
+        
+        // Convert scene position to normalized image coordinates
+        let imageOriginX = imageNode.position.x - imageNode.size.width / 2
+        let imageOriginY = imageNode.position.y - imageNode.size.height / 2
+        
+        let normalizedX = (position.x - imageOriginX) / imageNode.size.width
+        let normalizedY = (position.y - imageOriginY) / imageNode.size.height
+        
+        // Check each hotspot
+        for hotspot in hotspots {
+            let dx = normalizedX - hotspot.normalizedX
+            let dy = normalizedY - hotspot.normalizedY
+            let distance = sqrt(dx * dx + dy * dy)
+            
+            // Check if tap is within hotspot radius
+            if distance <= hotspot.normalizedRadius {
+                activateHotspot(hotspot)
+                break // Only activate one hotspot per tap
+            }
+        }
+    }
+    
+    private func activateHotspot(_ hotspot: ImageHotspot) {
+        // Toggle activation
+        if activatedHotspotIds.contains(hotspot.id) {
+            // Deactivate - remove marker
+            activatedHotspotIds.remove(hotspot.id)
+            hotspotMarkers[hotspot.id]?.removeFromParent()
+            hotspotMarkers.removeValue(forKey: hotspot.id)
+        } else {
+            // Activate - add marker
+            activatedHotspotIds.insert(hotspot.id)
+            drawHotspotMarker(for: hotspot)
+        }
+    }
+    
+    private func drawHotspotMarker(for hotspot: ImageHotspot) {
+        guard let imageNode = imageNode else { return }
+        
+        // Remove existing marker if any
+        hotspotMarkers[hotspot.id]?.removeFromParent()
+        
+        // Calculate scene position from normalized coordinates
+        let imageOriginX = imageNode.position.x - imageNode.size.width / 2
+        let imageOriginY = imageNode.position.y - imageNode.size.height / 2
+        
+        let sceneX = imageOriginX + hotspot.normalizedX * imageNode.size.width
+        let sceneY = imageOriginY + hotspot.normalizedY * imageNode.size.height
+        
+        // Calculate radius in scene coordinates
+        let sceneRadius = hotspot.normalizedRadius * imageNode.size.width
+        
+        // Create marker circle (like pen marking)
+        let marker = SKShapeNode(circleOfRadius: sceneRadius)
+        marker.strokeColor = .red
+        marker.lineWidth = 3
+        marker.fillColor = UIColor.red.withAlphaComponent(0.2)
+        marker.position = CGPoint(x: sceneX, y: sceneY)
+        marker.zPosition = 50
+        
+        addChild(marker)
+        hotspotMarkers[hotspot.id] = marker
+    }
+    
+    private func redrawHotspotMarkers() {
+        // Redraw all active markers at their new positions
+        for hotspotId in activatedHotspotIds {
+            if let hotspot = hotspots.first(where: { $0.id == hotspotId }) {
+                drawHotspotMarker(for: hotspot)
+            }
+        }
     }
     
     // MARK: - Magnifier
@@ -191,4 +290,3 @@ class GameScene: SKScene {
         magnifierNode = magnifier
     }
 }
-
