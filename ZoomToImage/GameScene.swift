@@ -1,0 +1,194 @@
+//
+//  GameScene.swift
+//  ZoomToImage
+//
+//  Created by AI Assistant on 07/02/26.
+//
+
+import SpriteKit
+
+class GameScene: SKScene {
+    
+    // MARK: - Properties
+    private var imageNode: SKSpriteNode?
+    private var magnifierNode: SKNode?
+    private var originalTexture: SKTexture!
+    
+    var isMagnifierEnabled: Bool = false {
+        didSet {
+            if !isMagnifierEnabled {
+                magnifierNode?.removeFromParent()
+                magnifierNode = nil
+            }
+        }
+    }
+    
+    // Magnifier configuration
+    private let magnifierRadius: CGFloat = 100
+    private let zoomFactor: CGFloat = 3.0
+    
+    // MARK: - Scene Lifecycle
+    
+    override func didMove(to view: SKView) {
+        backgroundColor = .black
+        loadTexture()
+    }
+    
+    override func didChangeSize(_ oldSize: CGSize) {
+        super.didChangeSize(oldSize)
+        // Reconfigure image when scene size changes
+        if size.width > 0 && size.height > 0 {
+            setupImage()
+        }
+    }
+    
+    // MARK: - Setup
+    
+    private func loadTexture() {
+        // Load the image texture once
+        originalTexture = SKTexture(imageNamed: "ai-dummy-image")
+    }
+    
+    private func setupImage() {
+        guard originalTexture != nil else { return }
+        
+        // Remove existing image node if any
+        imageNode?.removeFromParent()
+        
+        // Create the sprite node
+        let node = SKSpriteNode(texture: originalTexture)
+        
+        // Calculate size for 9:16 aspect ratio fitting in the scene
+        let targetAspectRatio: CGFloat = 9.0 / 16.0
+        let sceneAspectRatio = size.width / size.height
+        
+        var imageWidth: CGFloat
+        var imageHeight: CGFloat
+        
+        if sceneAspectRatio > targetAspectRatio {
+            // Scene is wider, fit by height
+            imageHeight = size.height
+            imageWidth = imageHeight * targetAspectRatio
+        } else {
+            // Scene is taller, fit by width
+            imageWidth = size.width
+            imageHeight = imageWidth / targetAspectRatio
+        }
+        
+        node.size = CGSize(width: imageWidth, height: imageHeight)
+        node.position = CGPoint(x: size.width / 2, y: size.height / 2)
+        node.zPosition = 0
+        
+        addChild(node)
+        imageNode = node
+    }
+    
+    // MARK: - Touch Handling
+    
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard isMagnifierEnabled, let touch = touches.first else { return }
+        let location = touch.location(in: self)
+        updateMagnifier(at: location)
+    }
+    
+    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard isMagnifierEnabled, let touch = touches.first else { return }
+        let location = touch.location(in: self)
+        updateMagnifier(at: location)
+    }
+    
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        magnifierNode?.removeFromParent()
+        magnifierNode = nil
+    }
+    
+    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
+        magnifierNode?.removeFromParent()
+        magnifierNode = nil
+    }
+    
+    // MARK: - Magnifier
+    
+    private func updateMagnifier(at position: CGPoint) {
+        guard let imageNode = imageNode else { return }
+        
+        // Check if touch is within the image bounds
+        guard imageNode.contains(position) else {
+            magnifierNode?.removeFromParent()
+            magnifierNode = nil
+            return
+        }
+        
+        // Remove existing magnifier
+        magnifierNode?.removeFromParent()
+        
+        // Create new magnifier node
+        let magnifier = SKNode()
+        magnifier.zPosition = 100
+        
+        // Create the lens background (white circle with shadow effect)
+        let lensBackground = SKShapeNode(circleOfRadius: magnifierRadius + 4)
+        lensBackground.fillColor = .white
+        lensBackground.strokeColor = .gray
+        lensBackground.lineWidth = 2
+        lensBackground.zPosition = 0
+        magnifier.addChild(lensBackground)
+        
+        // Create the lens content using a crop node
+        let lensContent = SKCropNode()
+        
+        // Create circular mask
+        let maskNode = SKShapeNode(circleOfRadius: magnifierRadius)
+        maskNode.fillColor = .white
+        lensContent.maskNode = maskNode
+        
+        // Create a scaled-up copy of the image for zooming
+        let zoomedSprite = SKSpriteNode(texture: originalTexture)
+        // Scale up the image size by zoom factor
+        zoomedSprite.size = CGSize(
+            width: imageNode.size.width * zoomFactor,
+            height: imageNode.size.height * zoomFactor
+        )
+        
+        // Calculate offset to center the touch point in the lens
+        // Convert touch position to image-local coordinates
+        let touchOffsetX = position.x - imageNode.position.x
+        let touchOffsetY = position.y - imageNode.position.y
+        
+        // Scale the offset by zoom factor and negate to position correctly
+        zoomedSprite.position = CGPoint(
+            x: -touchOffsetX * zoomFactor,
+            y: -touchOffsetY * zoomFactor
+        )
+        
+        lensContent.addChild(zoomedSprite)
+        lensContent.zPosition = 1
+        magnifier.addChild(lensContent)
+        
+        // Add lens border
+        let lensBorder = SKShapeNode(circleOfRadius: magnifierRadius)
+        lensBorder.strokeColor = .darkGray
+        lensBorder.lineWidth = 3
+        lensBorder.fillColor = .clear
+        lensBorder.zPosition = 2
+        magnifier.addChild(lensBorder)
+        
+        // Position magnifier above the touch point so it's visible
+        var magnifierPosition = CGPoint(x: position.x, y: position.y + magnifierRadius + 30)
+        
+        // Keep magnifier within scene bounds
+        let minX = magnifierRadius + 5
+        let maxX = size.width - magnifierRadius - 5
+        let minY = magnifierRadius + 5
+        let maxY = size.height - magnifierRadius - 5
+        
+        magnifierPosition.x = max(minX, min(maxX, magnifierPosition.x))
+        magnifierPosition.y = max(minY, min(maxY, magnifierPosition.y))
+        
+        magnifier.position = magnifierPosition
+        
+        addChild(magnifier)
+        magnifierNode = magnifier
+    }
+}
+
