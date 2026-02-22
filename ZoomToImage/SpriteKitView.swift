@@ -11,6 +11,11 @@ import SpriteKit
 struct SpriteKitView: UIViewRepresentable {
     @Binding var isMagnifierEnabled: Bool
     let hotspots: [ImageHotspot]
+    var onShowClue: ((@escaping () -> Void) -> Void)?
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
     
     func makeUIView(context: Context) -> SKView {
         let skView = SKView()
@@ -26,6 +31,21 @@ struct SpriteKitView: UIViewRepresentable {
         scene.hotspots = hotspots
         skView.presentScene(scene)
         
+        // Store reference to scene in coordinator
+        context.coordinator.gameScene = scene
+        print("[SpriteKitView] makeUIView - scene created, hotspots count: \(hotspots.count)")
+        
+        // Provide the clue trigger closure immediately
+        let coordinator = context.coordinator
+        let callback = onShowClue
+        DispatchQueue.main.async {
+            print("[SpriteKitView] Setting up clue trigger, callback exists: \(callback != nil)")
+            callback? {
+                print("[SpriteKitView] Clue trigger called, gameScene exists: \(coordinator.gameScene != nil)")
+                coordinator.gameScene?.showClue()
+            }
+        }
+        
         return skView
     }
     
@@ -34,5 +54,9 @@ struct SpriteKitView: UIViewRepresentable {
         if let gameScene = skView.scene as? GameScene {
             gameScene.isMagnifierEnabled = isMagnifierEnabled
         }
+    }
+    
+    class Coordinator {
+        var gameScene: GameScene?
     }
 }

@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ContentView: View {
     @State private var isMagnifierEnabled = false
+    @State private var showClueTrigger: (() -> Void)?
     
     // Example hotspots - adjust these normalized coordinates to match your image
     private let hotspots: [ImageHotspot] = [
@@ -31,12 +32,22 @@ struct ContentView: View {
             // SpriteKit view for image display (9:16 ratio area)
             SpriteKitView(
                 isMagnifierEnabled: $isMagnifierEnabled,
-                hotspots: hotspots
+                hotspots: hotspots,
+                onShowClue: { trigger in
+                    print("[ContentView] onShowClue callback received, setting trigger")
+                    showClueTrigger = trigger
+                }
             )
             .ignoresSafeArea()
             
             // Bottom menu bar
-            MenuBar(isMagnifierEnabled: $isMagnifierEnabled)
+            MenuBar(
+                isMagnifierEnabled: $isMagnifierEnabled,
+                onCluePressed: {
+                    print("[ContentView] Clue button pressed, trigger exists: \(showClueTrigger != nil)")
+                    showClueTrigger?()
+                }
+            )
         }
         .background(.black)
     }
@@ -44,6 +55,7 @@ struct ContentView: View {
 
 struct MenuBar: View {
     @Binding var isMagnifierEnabled: Bool
+    var onCluePressed: () -> Void
     
     var body: some View {
         HStack(spacing: 32) {
@@ -62,6 +74,20 @@ struct MenuBar: View {
             }
             
             Spacer()
+            
+            // Clue button
+            Button {
+                onCluePressed()
+            } label: {
+                VStack(spacing: 6) {
+                    Image(systemName: "lightbulb.circle")
+                        .font(.system(size: 28))
+                    
+                    Text("Clue")
+                        .font(.caption)
+                }
+                .foregroundStyle(.yellow)
+            }
         }
         .padding(.horizontal, 32)
         .padding(.vertical, 16)

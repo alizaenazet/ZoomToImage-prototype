@@ -206,6 +206,75 @@ class GameScene: SKScene {
         }
     }
     
+    // MARK: - Clue / Sonar Animation
+    
+    /// Shows a sonar pulse animation on a random unactivated hotspot
+    func showClue() {
+        print("[Clue] showClue() called")
+        print("[Clue] Total hotspots: \(hotspots.count)")
+        print("[Clue] Activated hotspot IDs: \(activatedHotspotIds)")
+        
+        // Get unactivated hotspots
+        let unactivatedHotspots = hotspots.filter { !activatedHotspotIds.contains($0.id) }
+        print("[Clue] Unactivated hotspots count: \(unactivatedHotspots.count)")
+        
+        // Return if no unactivated hotspots
+        guard let randomHotspot = unactivatedHotspots.randomElement() else {
+            print("[Clue] No unactivated hotspots available")
+            return
+        }
+        
+        guard let imageNode = imageNode else {
+            print("[Clue] imageNode is nil")
+            return
+        }
+        
+        print("[Clue] Selected hotspot: \(randomHotspot.id)")
+        print("[Clue] Image node size: \(imageNode.size), position: \(imageNode.position)")
+        
+        // Calculate scene position from normalized coordinates
+        let imageOriginX = imageNode.position.x - imageNode.size.width / 2
+        let imageOriginY = imageNode.position.y - imageNode.size.height / 2
+        
+        let sceneX = imageOriginX + randomHotspot.normalizedX * imageNode.size.width
+        let sceneY = imageOriginY + randomHotspot.normalizedY * imageNode.size.height
+        let position = CGPoint(x: sceneX, y: sceneY)
+        
+        print("[Clue] Sonar position: \(position)")
+        
+        // Create sonar pulse animation
+        createSonarPulse(at: position)
+    }
+    
+    private func createSonarPulse(at position: CGPoint) {
+        print("[Clue] Creating sonar pulse at: \(position)")
+        
+        // Create multiple expanding circles for sonar effect
+        for i in 0..<3 {
+            let delay = Double(i) * 0.3
+            
+            let pulse = SKShapeNode(circleOfRadius: 10)
+            pulse.strokeColor = UIColor.systemBlue
+            pulse.fillColor = UIColor.systemBlue.withAlphaComponent(0.3)
+            pulse.lineWidth = 3
+            pulse.position = position
+            pulse.zPosition = 60
+            pulse.alpha = 1.0
+            
+            addChild(pulse)
+            
+            // Animate: scale up and fade out
+            let wait = SKAction.wait(forDuration: delay)
+            let scaleUp = SKAction.scale(to: 8.0, duration: 1.0)
+            let fadeOut = SKAction.fadeOut(withDuration: 1.0)
+            let animateGroup = SKAction.group([scaleUp, fadeOut])
+            let remove = SKAction.removeFromParent()
+            
+            let sequence = SKAction.sequence([wait, animateGroup, remove])
+            pulse.run(sequence)
+        }
+    }
+    
     // MARK: - Magnifier
     
     private func updateMagnifier(at position: CGPoint) {
