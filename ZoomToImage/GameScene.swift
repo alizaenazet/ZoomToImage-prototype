@@ -38,6 +38,9 @@ class GameScene: SKScene {
     /// Dictionary to store marker nodes by hotspot ID
     private var hotspotMarkers: [String: SKNode] = [:]
     
+    /// Called when all hotspots have been found
+    var onAllHotspotsFound: (() -> Void)?
+    
     // MARK: - Scene Lifecycle
     
     override func didMove(to view: SKView) {
@@ -166,7 +169,26 @@ class GameScene: SKScene {
             // Activate - add marker
             activatedHotspotIds.insert(hotspot.id)
             drawHotspotMarker(for: hotspot)
+            
+            // Check if all hotspots have been found
+            if activatedHotspotIds.count == hotspots.count {
+                print("[GameScene] All hotspots found!")
+                // Small delay so player can see the last marker
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
+                    self?.onAllHotspotsFound?()
+                }
+            }
         }
+    }
+    
+    /// Resets all activated hotspots and removes markers
+    func resetHotspots() {
+        activatedHotspotIds.removeAll()
+        for (_, marker) in hotspotMarkers {
+            marker.removeFromParent()
+        }
+        hotspotMarkers.removeAll()
+        print("[GameScene] Hotspots reset")
     }
     
     private func drawHotspotMarker(for hotspot: ImageHotspot) {

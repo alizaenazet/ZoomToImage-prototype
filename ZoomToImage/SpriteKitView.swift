@@ -12,6 +12,8 @@ struct SpriteKitView: UIViewRepresentable {
     @Binding var isMagnifierEnabled: Bool
     let hotspots: [ImageHotspot]
     var onShowClue: ((@escaping () -> Void) -> Void)?
+    var onAllHotspotsFound: (() -> Void)?
+    var onResetHotspots: ((@escaping () -> Void) -> Void)?
     
     func makeCoordinator() -> Coordinator {
         Coordinator()
@@ -35,14 +37,23 @@ struct SpriteKitView: UIViewRepresentable {
         context.coordinator.gameScene = scene
         print("[SpriteKitView] makeUIView - scene created, hotspots count: \(hotspots.count)")
         
-        // Provide the clue trigger closure immediately
+        // Wire up the all-hotspots-found callback
+        let allFoundCallback = onAllHotspotsFound
+        scene.onAllHotspotsFound = {
+            print("[SpriteKitView] All hotspots found, notifying ContentView")
+            allFoundCallback?()
+        }
+        
+        // Provide the clue trigger closure
         let coordinator = context.coordinator
-        let callback = onShowClue
+        let clueCallback = onShowClue
+        let resetCallback = onResetHotspots
         DispatchQueue.main.async {
-            print("[SpriteKitView] Setting up clue trigger, callback exists: \(callback != nil)")
-            callback? {
-                print("[SpriteKitView] Clue trigger called, gameScene exists: \(coordinator.gameScene != nil)")
+            clueCallback? {
                 coordinator.gameScene?.showClue()
+            }
+            resetCallback? {
+                coordinator.gameScene?.resetHotspots()
             }
         }
         

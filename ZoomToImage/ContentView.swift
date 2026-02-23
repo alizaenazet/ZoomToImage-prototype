@@ -10,6 +10,13 @@ import SwiftUI
 struct ContentView: View {
     @State private var isMagnifierEnabled = false
     @State private var showClueTrigger: (() -> Void)?
+    @State private var resetHotspotsTrigger: (() -> Void)?
+    
+    /// Controls which scene is shown: true = investigation, false = conversation
+    @State private var isInvestigating = true
+    
+    /// Unique key to force SpriteKitView recreation on scene return
+    @State private var investigationKey = UUID()
     
     // Example hotspots - adjust these normalized coordinates to match your image
     private let hotspots: [ImageHotspot] = [
@@ -28,26 +35,54 @@ struct ContentView: View {
     ]
     
     var body: some View {
-        VStack(spacing: 0) {
-            // SpriteKit view for image display (9:16 ratio area)
-            SpriteKitView(
-                isMagnifierEnabled: $isMagnifierEnabled,
-                hotspots: hotspots,
-                onShowClue: { trigger in
-                    print("[ContentView] onShowClue callback received, setting trigger")
-                    showClueTrigger = trigger
+        ZStack {
+            if isInvestigating {
+                // Investigation scene
+                VStack(spacing: 0) {
+                    SpriteKitView(
+                        isMagnifierEnabled: $isMagnifierEnabled,
+                        hotspots: hotspots,
+                        onShowClue: { trigger in
+                            showClueTrigger = trigger
+                        },
+                        onAllHotspotsFound: {
+                            print("[ContentView] All hotspots found! Switching to conversation.")
+                            withAnimation(.easeInOut(duration: 0.5)) {
+                                isInvestigating = false
+                            }
+                        },
+                        onResetHotspots: { trigger in
+                            resetHotspotsTrigger = trigger
+                        }
+                    )
+                    .id(investigationKey)
+                    .ignoresSafeArea()
+                    
+                    // Bottom menu bar
+                    MenuBar(
+                        isMagnifierEnabled: $isMagnifierEnabled,
+                        onCluePressed: {
+                            showClueTrigger?()
+                        }
+                    )
                 }
-            )
-            .ignoresSafeArea()
-            
-            // Bottom menu bar
-            MenuBar(
-                isMagnifierEnabled: $isMagnifierEnabled,
-                onCluePressed: {
-                    print("[ContentView] Clue button pressed, trigger exists: \(showClueTrigger != nil)")
-                    showClueTrigger?()
-                }
-            )
+                .transition(.opacity)
+            } else {
+                // Conversation scene
+                ConversationView(onConversationEnd: {
+                    print("[ContentView] Conversation ended. Returning to investigation.")
+                    // Reset for next round
+                    investigationKey = UUID()
+                    showClueTrigger = nil
+                    resetHotspotsTrigger = nil
+                    isMagnifierEnabled = false
+                    
+                    withAnimation(.easeInOut(duration: 0.5)) {
+                        isInvestigating = true
+                    }
+                })
+                .transition(.opacity)
+            }
         }
         .background(.black)
     }
