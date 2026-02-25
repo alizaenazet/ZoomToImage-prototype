@@ -12,6 +12,9 @@ struct ContentView: View {
     @State private var showClueTrigger: (() -> Void)?
     @State private var resetHotspotsTrigger: (() -> Void)?
     
+    /// Shows the welcome page only once at the start
+    @State private var showWelcome = true
+    
     /// Controls which scene is shown: true = investigation, false = conversation
     @State private var isInvestigating = true
     
@@ -36,7 +39,15 @@ struct ContentView: View {
     
     var body: some View {
         ZStack {
-            if isInvestigating {
+            if showWelcome {
+                // Welcome page - shown once at the start
+                WelcomeView(onStartGame: {
+                    withAnimation(.easeInOut(duration: 0.5)) {
+                        showWelcome = false
+                    }
+                })
+                .transition(.opacity)
+            } else if isInvestigating {
                 // Investigation scene
                 VStack(spacing: 0) {
                     SpriteKitView(
