@@ -6,13 +6,12 @@
 //
 
 import SpriteKit
+import Observation
 
+@Observable
 class GameScene: SKScene {
     
-    // MARK: - Properties
-    private var imageNode: SKSpriteNode?
-    private var magnifierNode: SKNode?
-    private var originalTexture: SKTexture!
+    // MARK: - Observable Properties (SwiftUI reads these directly)
     
     var isMagnifierEnabled: Bool = false {
         didSet {
@@ -23,29 +22,35 @@ class GameScene: SKScene {
         }
     }
     
+    /// Set to true when all hotspots are found — SwiftUI observes this
+    var allHotspotsFound: Bool = false
+    
+    // MARK: - Private Properties
+    @ObservationIgnored private var imageNode: SKSpriteNode?
+    @ObservationIgnored private var magnifierNode: SKNode?
+    @ObservationIgnored private var originalTexture: SKTexture!
+    
     // Magnifier configuration
-    private let magnifierRadius: CGFloat = 100
-    private let zoomFactor: CGFloat = 3.0
+    @ObservationIgnored private let magnifierRadius: CGFloat = 100
+    @ObservationIgnored private let zoomFactor: CGFloat = 3.0
     
     // MARK: - Hotspots
     
     /// Configurable hotspots - define clickable regions using normalized coordinates
-    var hotspots: [ImageHotspot] = []
+    @ObservationIgnored var hotspots: [ImageHotspot] = []
     
     /// Track which hotspots have been activated (marked)
-    private var activatedHotspotIds: Set<String> = []
+    @ObservationIgnored private var activatedHotspotIds: Set<String> = []
     
     /// Dictionary to store marker nodes by hotspot ID
-    private var hotspotMarkers: [String: SKNode] = [:]
-    
-    /// Called when all hotspots have been found
-    var onAllHotspotsFound: (() -> Void)?
+    @ObservationIgnored private var hotspotMarkers: [String: SKNode] = [:]
     
     // MARK: - Scene Lifecycle
     
     override func didMove(to view: SKView) {
         backgroundColor = .black
         loadTexture()
+        setupImage()
     }
     
     override func didChangeSize(_ oldSize: CGSize) {
@@ -175,7 +180,7 @@ class GameScene: SKScene {
                 print("[GameScene] All hotspots found!")
                 // Small delay so player can see the last marker
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
-                    self?.onAllHotspotsFound?()
+                    self?.allHotspotsFound = true
                 }
             }
         }
